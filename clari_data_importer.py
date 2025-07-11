@@ -9,13 +9,13 @@ import logging
 from participant_mapper import ParticipantMapper
 
 # Configuration
-CLARI_API_KEY = "1aAo6cu02x3eVFeHqK51O8GbW2CkXA8y4sMOUx1d"
+CLARI_API_KEY = os.environ.get('CLARI_API_KEY', "1aAo6cu02x3eVFeHqK51O8GbW2CkXA8y4sMOUx1d")
 CLARI_API_PASSWORD = "732f1e7a-5f7f-435e-a701-558467bd70cc"
 CLARI_BASE_URL = "https://rest-api.copilot.clari.com"
 
-# Supabase configuration (you'll need to add your own credentials)
-SUPABASE_URL = "YOUR_SUPABASE_URL"
-SUPABASE_KEY = "YOUR_SUPABASE_ANON_KEY"
+# Supabase configuration from environment variables
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 
 # Setup logging
 logging.basicConfig(
