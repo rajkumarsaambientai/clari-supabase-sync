@@ -100,6 +100,28 @@ def manual_sync():
             "timestamp": datetime.now().isoformat()
         }), 500
 
+@app.route('/sync-sample')
+@limiter.limit("5 per hour")  # Rate limit sample syncs
+def sample_sync():
+    """Trigger sample sync for last 7 days"""
+    try:
+        logger.info("Sample sync triggered (last 7 days)")
+        service = get_sync_service()
+        result = service.run_sample_sync(days=7)
+        return jsonify({
+            "status": "success",
+            "message": f"Sample sync completed. Found {result.get('total_calls', 0)} calls, imported {result.get('imported_calls', 0)} new calls",
+            "details": result,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Sample sync failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
 @app.route('/status')
 def status():
     """Check service status"""

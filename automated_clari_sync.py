@@ -156,6 +156,51 @@ class AutomatedClariSync:
     def run_daily_sync(self):
         """Run the daily sync (defaults to last 7 days)"""
         self.sync_new_calls(days_back=7)
+    
+    def run_sample_sync(self, days=7):
+        """Run a sample sync for testing with detailed results"""
+        logger.info(f"Starting sample sync for last {days} days...")
+        
+        try:
+            # Get existing call IDs from Supabase
+            existing_call_ids = self.get_existing_call_ids()
+            
+            # Get recent call IDs from Clari
+            recent_call_ids = self.fetch_recent_call_ids_from_clari(days)
+            
+            # Find new calls (not already in Supabase)
+            new_call_ids = [call_id for call_id in recent_call_ids if call_id not in existing_call_ids]
+            
+            logger.info(f"Sample sync: Found {len(recent_call_ids)} total calls, {len(new_call_ids)} new calls to import")
+            
+            result = {
+                'total_calls': len(recent_call_ids),
+                'existing_calls': len(existing_call_ids),
+                'new_calls': len(new_call_ids),
+                'imported_calls': 0,
+                'failed_calls': 0
+            }
+            
+            if new_call_ids:
+                # Import new calls
+                successful, failed = self.importer.import_call_data(new_call_ids)
+                result['imported_calls'] = successful
+                result['failed_calls'] = failed
+                
+                logger.info(f"Sample sync completed: {successful} imported, {failed} failed")
+            else:
+                logger.info("Sample sync: No new calls to import")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error during sample sync: {e}")
+            return {
+                'error': str(e),
+                'total_calls': 0,
+                'imported_calls': 0,
+                'failed_calls': 0
+            }
 
 def main():
     """Main function to run the automated sync"""
