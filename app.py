@@ -56,9 +56,16 @@ def get_sync_service():
             logger.info(f"SUPABASE_KEY: {'Set' if supabase_key else 'Not set'}")
             logger.info(f"CLARI_API_KEY: {'Set' if clari_key else 'Not set'}")
             
+            # Debug the actual values (masked for security)
+            if supabase_url:
+                logger.info(f"SUPABASE_URL value: {supabase_url[:20]}...")
+            if supabase_key:
+                logger.info(f"SUPABASE_KEY value: {supabase_key[:20]}...")
+            
             sync_service = AutomatedClariSync()
         except Exception as e:
             logger.error(f"Failed to initialize sync service: {e}")
+            logger.error(f"Exception type: {type(e).__name__}")
             raise
     return sync_service
 
