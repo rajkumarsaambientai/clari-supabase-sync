@@ -39,8 +39,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize sync service
-sync_service = AutomatedClariSync()
+# Initialize sync service (lazy loading)
+sync_service = None
+
+def get_sync_service():
+    """Get or create sync service instance"""
+    global sync_service
+    if sync_service is None:
+        try:
+            sync_service = AutomatedClariSync()
+        except Exception as e:
+            logger.error(f"Failed to initialize sync service: {e}")
+            raise
+    return sync_service
 
 @app.route('/')
 def home():
@@ -58,7 +69,8 @@ def manual_sync():
     """Trigger manual sync"""
     try:
         logger.info("Manual sync triggered")
-        sync_service.run_daily_sync()
+        service = get_sync_service()
+        service.run_daily_sync()
         return jsonify({
             "status": "success",
             "message": "Sync completed successfully",
@@ -77,7 +89,8 @@ def status():
     """Check service status"""
     try:
         # Test Supabase connection
-        existing_calls = sync_service.get_existing_call_ids()
+        service = get_sync_service()
+        existing_calls = service.get_existing_call_ids()
         return jsonify({
             "status": "healthy",
             "supabase_connected": True,
