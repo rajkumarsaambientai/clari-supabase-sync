@@ -79,9 +79,8 @@ class AutomatedClariSync:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days_back)
         
-        # This is a placeholder - you'll need to implement the actual API call
-        # based on Clari's API documentation
-        url = f"{self.importer.clari_headers['BASE_URL']}/calls"
+        # Use the correct Clari API URL and headers
+        url = f"https://rest-api.copilot.clari.com/calls"
         params = {
             'start_date': start_date.isoformat(),
             'end_date': end_date.isoformat(),
@@ -89,14 +88,21 @@ class AutomatedClariSync:
         }
         
         try:
+            logger.info(f"Calling Clari API: {url}")
+            logger.info(f"Date range: {start_date.isoformat()} to {end_date.isoformat()}")
+            
             response = requests.get(url, headers=self.importer.clari_headers, params=params)
+            logger.info(f"Clari API response status: {response.status_code}")
+            
             if response.status_code == 200:
                 data = response.json()
+                logger.info(f"Clari API response: {data}")
                 # Extract call IDs from response - adjust based on actual API response structure
                 call_ids = [call['id'] for call in data.get('calls', [])]
                 return call_ids
             else:
                 logger.error(f"Clari API error: {response.status_code}")
+                logger.error(f"Response content: {response.text}")
                 return []
         except Exception as e:
             logger.error(f"Error calling Clari API: {e}")
