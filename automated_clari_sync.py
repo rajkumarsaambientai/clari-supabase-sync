@@ -84,7 +84,7 @@ class AutomatedClariSync:
         params = {
             'start_date': start_date.isoformat(),
             'end_date': end_date.isoformat(),
-            'limit': 1000  # Adjust based on your needs
+            'limit': 100  # Clari API max limit is 100
         }
         
         try:
