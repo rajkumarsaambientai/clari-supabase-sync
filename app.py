@@ -47,6 +47,15 @@ def get_sync_service():
     global sync_service
     if sync_service is None:
         try:
+            # Debug environment variables
+            supabase_url = os.environ.get('SUPABASE_URL')
+            supabase_key = os.environ.get('SUPABASE_KEY')
+            clari_key = os.environ.get('CLARI_API_KEY')
+            
+            logger.info(f"SUPABASE_URL: {'Set' if supabase_url else 'Not set'}")
+            logger.info(f"SUPABASE_KEY: {'Set' if supabase_key else 'Not set'}")
+            logger.info(f"CLARI_API_KEY: {'Set' if clari_key else 'Not set'}")
+            
             sync_service = AutomatedClariSync()
         except Exception as e:
             logger.error(f"Failed to initialize sync service: {e}")
