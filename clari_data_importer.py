@@ -540,6 +540,14 @@ class ClariDataImporter:
             # Transform data
             transformed_data = self.transform_clari_data_comprehensive(call_id, call_data)
             
+            # Debug: Log what we're trying to insert
+            logger.info(f"Transformed data for {call_id}:")
+            logger.info(f"  - title: {transformed_data.get('title')}")
+            logger.info(f"  - deal_name: {transformed_data.get('deal_name')}")
+            logger.info(f"  - full_summary: {transformed_data.get('full_summary', '')[:100]}...")
+            logger.info(f"  - call_duration: {transformed_data.get('call_duration')}")
+            logger.info(f"  - total fields: {len(transformed_data)}")
+            
             # Insert into clari_calls table
             result = self.supabase.table('clari_calls').upsert(transformed_data).execute()
             
