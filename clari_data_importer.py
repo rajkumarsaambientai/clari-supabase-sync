@@ -81,7 +81,7 @@ class ClariDataImporter:
             'account_type': self._determine_account_type(crm_info),
             'account_industry': crm_info.get('account_industry', ''),
             'account_annual_revenue': self._parse_revenue(crm_info.get('account_annual_revenue')),
-            'account_id': crm_info.get('account_id', ''),
+            'account_id': crm_info.get('account_id') or f'unknown_{call_id}',  # Use call_id as fallback for empty account_id
             
             # Opportunity context
             'opp_id_sfdc': crm_info.get('deal_id', ''),
