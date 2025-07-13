@@ -53,7 +53,10 @@ class ClariDataImporter:
                 response = requests.get(url, headers=self.clari_headers)
                 if response.status_code == 200:
                     data = response.json()
-                    return data.get('call', {})
+                    # The call data is nested under 'call' key, just like in your working sample
+                    call_data = data.get('call', {})
+                    logger.info(f"Call {call_id}: Successfully fetched call data with {len(call_data)} keys")
+                    return call_data
                 elif response.status_code in (429, 500, 502, 503, 504):
                     logger.warning(f"Call {call_id}: API status {response.status_code}, attempt {attempt}/{max_retries}")
                     time.sleep(30)
@@ -84,7 +87,7 @@ class ClariDataImporter:
             'account_annual_revenue': self._parse_revenue(crm_info.get('account_annual_revenue')),
             'account_id': crm_info.get('account_id') or f'unknown_{call_id}',  # Use call_id as fallback for empty account_id
             
-            # Opportunity context
+            # Opportunity context - using the structure from your working sample
             'opp_id_sfdc': crm_info.get('deal_id', ''),
             'deal_stage_before': call_data.get('deal_stage_before', ''),
             'deal_stage_after': call_data.get('deal_stage_after', ''),
