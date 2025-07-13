@@ -101,7 +101,7 @@ def manual_sync():
         }), 500
 
 @app.route('/sync-sample')
-@limiter.limit("5 per hour")  # Rate limit sample syncs
+@limiter.limit("20 per hour")  # Increased rate limit for testing
 def sample_sync():
     """Trigger sample sync for last 7 days"""
     try:
