@@ -69,15 +69,16 @@ class ClariDataImporter:
     
     def transform_clari_data(self, call_id, call_data):
         """Transform Clari data to match our database schema"""
+        # Handle cases where CRM info might be empty or missing
         crm_info = call_data.get('crm_info', {})
         summary = call_data.get('summary', {})
         transcript = call_data.get('transcript', [])
         
-        # Extract basic metadata
+        # Extract basic metadata with fallbacks for missing CRM data
         call_record = {
             'call_id': call_id,
             'contact_title': crm_info.get('contact_title', ''),
-            'customer_prospect_name': crm_info.get('account_name', ''),
+            'customer_prospect_name': crm_info.get('account_name', '') or 'Unknown Account',
             'account_type': self._determine_account_type(crm_info),
             'account_industry': crm_info.get('account_industry', ''),
             'account_annual_revenue': self._parse_revenue(crm_info.get('account_annual_revenue')),
@@ -186,6 +187,8 @@ class ClariDataImporter:
             return crm_info.get('account_type')
         elif crm_info.get('deal_stage') in ['Closed Won', 'Closed Lost']:
             return 'Customer'
+        elif not crm_info:  # No CRM data available
+            return 'Unknown'
         else:
             return 'Prospect'
     
