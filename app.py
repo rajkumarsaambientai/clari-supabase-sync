@@ -162,6 +162,54 @@ def debug_sync():
             "timestamp": datetime.now().isoformat()
         }), 500
 
+@app.route('/debug-raw-data')
+@limiter.limit("5 per hour")  # Rate limit raw data debug
+def debug_raw_data():
+    """Debug endpoint to show raw Clari data structure"""
+    try:
+        logger.info("Raw data debug triggered")
+        service = get_sync_service()
+        
+        # Get just 1 call ID for testing
+        recent_call_ids = service.fetch_recent_call_ids_from_clari(days_back=7)
+        test_call_id = recent_call_ids[0] if recent_call_ids else None
+        
+        if not test_call_id:
+            return jsonify({
+                "status": "error",
+                "message": "No calls found to test",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        # Fetch raw call data
+        call_data = service.importer.fetch_call_details(test_call_id)
+        
+        if not call_data:
+            return jsonify({
+                "status": "error",
+                "message": f"No data returned for call {test_call_id}",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        # Transform the data to see what we're working with
+        transformed_data = service.importer.transform_clari_data(test_call_id, call_data)
+        
+        return jsonify({
+            "status": "success",
+            "call_id": test_call_id,
+            "raw_data_keys": list(call_data.keys()) if call_data else [],
+            "crm_info_keys": list(call_data.get('crm_info', {}).keys()) if call_data else [],
+            "transformed_data": transformed_data,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Raw data debug failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
 @app.route('/status')
 def status():
     """Check service status"""
