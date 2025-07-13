@@ -70,9 +70,8 @@ class AutomatedClariSync:
     def _fetch_call_ids_from_clari_api(self, days_back):
         """
         Fetch call IDs from Clari API
-        You'll need to implement this based on Clari's API documentation
+        For now, we'll use a simple approach to get recent calls
         """
-        # Placeholder implementation - replace with actual Clari API call
         import requests
         
         # Calculate date range
@@ -96,9 +95,26 @@ class AutomatedClariSync:
             
             if response.status_code == 200:
                 data = response.json()
-                logger.info(f"Clari API response: {data}")
-                # Extract call IDs from response - adjust based on actual API response structure
-                call_ids = [call['id'] for call in data.get('calls', [])]
+                logger.info(f"Clari API response keys: {list(data.keys()) if isinstance(data, dict) else 'Not a dict'}")
+                
+                # Try different possible response structures
+                calls = []
+                if isinstance(data, dict):
+                    calls = data.get('calls', data.get('data', data.get('results', [])))
+                elif isinstance(data, list):
+                    calls = data
+                
+                logger.info(f"Found {len(calls)} calls in response")
+                
+                # Extract call IDs - try different possible field names
+                call_ids = []
+                for call in calls:
+                    if isinstance(call, dict):
+                        call_id = call.get('id') or call.get('call_id') or call.get('callId')
+                        if call_id:
+                            call_ids.append(str(call_id))
+                
+                logger.info(f"Extracted {len(call_ids)} call IDs")
                 return call_ids
             else:
                 logger.error(f"Clari API error: {response.status_code}")
