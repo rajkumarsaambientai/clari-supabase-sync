@@ -296,6 +296,38 @@ def debug_specific_call():
             "timestamp": datetime.now().isoformat()
         }), 500
 
+@app.route('/import-calls', methods=['POST'])
+@limiter.limit("5 per hour")
+def import_calls():
+    """Import a custom list of call IDs (for legacy/sample script compatibility)"""
+    try:
+        logger.info("Custom import triggered via /import-calls")
+        service = get_sync_service()
+        data = request.get_json()
+        call_ids = data.get('call_ids', [])
+        if not call_ids or not isinstance(call_ids, list):
+            return jsonify({
+                "status": "error",
+                "message": "call_ids must be a non-empty list",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        logger.info(f"Importing {len(call_ids)} call IDs via /import-calls")
+        successful, failed = service.importer.import_call_data(call_ids)
+        return jsonify({
+            "status": "success",
+            "imported": successful,
+            "failed": failed,
+            "total": len(call_ids),
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Import-calls failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
 @app.route('/status')
 def status():
     """Check service status"""
