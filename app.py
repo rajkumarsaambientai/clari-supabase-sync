@@ -122,6 +122,46 @@ def sample_sync():
             "timestamp": datetime.now().isoformat()
         }), 500
 
+@app.route('/sync-debug')
+@limiter.limit("10 per hour")  # Rate limit debug syncs
+def debug_sync():
+    """Debug sync with just 1-2 calls to see import errors"""
+    try:
+        logger.info("Debug sync triggered (1-2 calls)")
+        service = get_sync_service()
+        
+        # Get just 1-2 call IDs for testing
+        recent_call_ids = service.fetch_recent_call_ids_from_clari(days_back=7)
+        test_call_ids = recent_call_ids[:2] if recent_call_ids else []
+        
+        if not test_call_ids:
+            return jsonify({
+                "status": "error",
+                "message": "No calls found to test",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        logger.info(f"Debug sync: Testing with {len(test_call_ids)} calls: {test_call_ids}")
+        
+        # Try to import just these calls
+        successful, failed = service.importer.import_call_data(test_call_ids)
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Debug sync completed. Tested {len(test_call_ids)} calls, imported {successful}, failed {failed}",
+            "test_call_ids": test_call_ids,
+            "successful": successful,
+            "failed": failed,
+            "timestamp": datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Debug sync failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
 @app.route('/status')
 def status():
     """Check service status"""
