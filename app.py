@@ -239,34 +239,52 @@ def debug_api_call():
 @app.route('/debug-specific-call')
 @limiter.limit("5 per hour")  # Rate limit specific call debug
 def debug_specific_call():
-    """Debug endpoint to test a specific call ID from the working sample"""
+    """Debug endpoint to test specific call IDs from the working sample"""
     try:
         logger.info("Specific call debug triggered")
         service = get_sync_service()
         
-        # Test with a call ID from the working sample
-        test_call_id = "9b0f3ee3-8b91-4ab6-8177-7f07af53ddbf"
+        # Test with multiple call IDs from the working sample
+        test_call_ids = [
+            "9b0f3ee3-8b91-4ab6-8177-7f07af53ddbf",
+            "a5b23f40-d2b5-4ea3-9e17-76ce0b08dc8f", 
+            "542c15d1-2427-4017-ab72-5aa9d23617ce"
+        ]
         
-        # Fetch raw call data
-        call_data = service.importer.fetch_call_details(test_call_id)
-        
-        if not call_data:
-            return jsonify({
-                "status": "error",
-                "message": f"No data returned for call {test_call_id}",
-                "timestamp": datetime.now().isoformat()
-            }), 400
-        
-        # Transform the data to see what we're working with
-        transformed_data = service.importer.transform_clari_data(test_call_id, call_data)
+        results = []
+        for call_id in test_call_ids:
+            # Fetch raw call data
+            call_data = service.importer.fetch_call_details(call_id)
+            
+            if not call_data:
+                results.append({
+                    "call_id": call_id,
+                    "status": "error",
+                    "message": f"No data returned for call {call_id}"
+                })
+                continue
+            
+            # Transform the data to see what we're working with
+            transformed_data = service.importer.transform_clari_data(call_id, call_data)
+            
+            results.append({
+                "call_id": call_id,
+                "status": "success",
+                "raw_data_keys": list(call_data.keys()) if call_data else [],
+                "crm_info_keys": list(call_data.get('crm_info', {}).keys()) if call_data else [],
+                "summary_keys": list(call_data.get('summary', {}).keys()) if call_data else [],
+                "has_full_summary": bool(call_data.get('summary', {}).get('full_summary')),
+                "has_key_takeaways": bool(call_data.get('summary', {}).get('key_takeaways')),
+                "has_topics_discussed": bool(call_data.get('summary', {}).get('topics_discussed')),
+                "has_key_action_items": bool(call_data.get('summary', {}).get('key_action_items')),
+                "account_id": call_data.get('crm_info', {}).get('account_id'),
+                "deal_id": call_data.get('crm_info', {}).get('deal_id'),
+                "deal_stage_live": call_data.get('deal_stage_live')
+            })
         
         return jsonify({
             "status": "success",
-            "call_id": test_call_id,
-            "raw_data_keys": list(call_data.keys()) if call_data else [],
-            "crm_info_keys": list(call_data.get('crm_info', {}).keys()) if call_data else [],
-            "summary_keys": list(call_data.get('summary', {}).keys()) if call_data else [],
-            "transformed_data": transformed_data,
+            "results": results,
             "timestamp": datetime.now().isoformat()
         })
         
