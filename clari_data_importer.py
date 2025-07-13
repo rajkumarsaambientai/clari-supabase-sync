@@ -14,8 +14,8 @@ CLARI_API_PASSWORD = "732f1e7a-5f7f-435e-a701-558467bd70cc"
 CLARI_BASE_URL = "https://rest-api.copilot.clari.com"
 
 # Supabase configuration from environment variables
-SUPABASE_URL = os.environ.get('SUPABASE_URL')
-SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+SUPABASE_URL = os.environ.get('SUPABASE_URL', '')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', '')
 
 # Setup logging
 logging.basicConfig(
@@ -38,7 +38,10 @@ class ClariDataImporter:
         }
         
         # Initialize Supabase client
-        self.supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        if SUPABASE_URL and SUPABASE_KEY:
+            self.supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        else:
+            self.supabase = None
         
         # Initialize participant mapper
         self.participant_mapper = ParticipantMapper(mapping_file_path)
@@ -71,27 +74,54 @@ class ClariDataImporter:
         return None
     
     def transform_clari_data(self, call_id, call_data):
-        """Transform Clari data to match our database schema"""
+        """Transform Clari data to match our database schema - using the working sample approach"""
         # Handle cases where CRM info might be empty or missing
         crm_info = call_data.get('crm_info', {})
         summary = call_data.get('summary', {})
-        transcript = call_data.get('transcript', [])
         
-        # Extract basic metadata with fallbacks for missing CRM data
+        # Extract data using the same approach as your working sample script
+        opportunity_ids = crm_info.get('deal_id', '')
+        account_ids = crm_info.get('account_id', '')
+        contact_ids = ','.join(crm_info.get('contact_ids', [])) if isinstance(crm_info.get('contact_ids', []), list) else crm_info.get('contact_ids', '')
+        deal_stage_live = call_data.get('deal_stage_live', '')
+        
+        # Extract summary data like your working script
+        full_summary = summary.get('full_summary', '')
+        key_takeaways = summary.get('key_takeaways', '')
+        if isinstance(key_takeaways, list):
+            key_takeaways_str = '\n'.join(f'- {item}' for item in key_takeaways)
+        else:
+            key_takeaways_str = key_takeaways
+            
+        topics_discussed = summary.get('topics_discussed', [])
+        topics_json = json.dumps([
+            {'name': t.get('name', ''), 'summary': t.get('summary', '')}
+            for t in topics_discussed
+        ])
+        
+        key_action_items = summary.get('key_action_items', [])
+        action_items_json = json.dumps([
+            {'action_item': a.get('action_item', ''), 'owner': a.get('owner_name', '')}
+            for a in key_action_items
+        ])
+        
+        # Build the call record with the fields that were working in your sample
         call_record = {
             'call_id': call_id,
+            
+            # Basic CRM data (with fallbacks for missing data)
             'contact_title': crm_info.get('contact_title', ''),
             'customer_prospect_name': crm_info.get('account_name', '') or 'Unknown Account',
             'account_type': self._determine_account_type(crm_info),
             'account_industry': crm_info.get('account_industry', ''),
             'account_annual_revenue': self._parse_revenue(crm_info.get('account_annual_revenue')),
-            'account_id': crm_info.get('account_id') or f'unknown_{call_id}',  # Use call_id as fallback for empty account_id
+            'account_id': account_ids or f'unknown_{call_id}',
             
-            # Opportunity context - using the structure from your working sample
-            'opp_id_sfdc': crm_info.get('deal_id', ''),
+            # Opportunity data (from your working sample)
+            'opp_id_sfdc': opportunity_ids,
             'deal_stage_before': call_data.get('deal_stage_before', ''),
             'deal_stage_after': call_data.get('deal_stage_after', ''),
-            'deal_stage_current': call_data.get('deal_stage_live', ''),
+            'deal_stage_current': deal_stage_live,
             'opportunity_amount': self._parse_amount(crm_info.get('deal_amount')),
             'opportunity_age': self._calculate_opportunity_age(crm_info.get('deal_created_date')),
             'close_date': self._parse_date(crm_info.get('deal_close_date')),
@@ -103,27 +133,18 @@ class ClariDataImporter:
             'opportunity_type': crm_info.get('deal_type', ''),
             'opportunity_contracted_arr': self._parse_amount(crm_info.get('contracted_arr')),
             
-            # Call metrics
+            # Call metrics (basic ones that should exist)
             'duration_seconds': call_data.get('duration_seconds', 0),
             'talk_listen_ratio': call_data.get('talk_listen_ratio', 0.0),
             'longest_monologue': call_data.get('longest_monologue', 0),
             'interactivity_score': call_data.get('interactivity_score', 0.0),
             'engaging_question_count': call_data.get('engaging_question_count', 0),
             
-            # AI-detected topics (counts)
-            'use_case_topic_count': self._count_topic_mentions(summary.get('topics_discussed', []), 'use case'),
-            'pricing_budget_competitors_count': self._count_topic_mentions(summary.get('topics_discussed', []), 'pricing|budget|competitor'),
-            'authority_timeline_process_count': self._count_topic_mentions(summary.get('topics_discussed', []), 'authority|timeline|process'),
-            'goals_pain_points_count': self._count_topic_mentions(summary.get('topics_discussed', []), 'goal|pain|problem'),
-            'access_control_systems_count': self._count_topic_mentions(summary.get('topics_discussed', []), 'access|control|system'),
-            'vms_count': self._count_topic_mentions(summary.get('topics_discussed', []), 'vms|video management'),
-            'covid_count': self._count_topic_mentions(summary.get('topics_discussed', []), 'covid|pandemic'),
-            
-            # Narrative fields
-            'full_summary': summary.get('full_summary', ''),
-            'key_takeaways': self._format_takeaways(summary.get('key_takeaways', [])),
-            'topics_discussed': json.dumps(summary.get('topics_discussed', [])),
-            'key_action_items': json.dumps(summary.get('key_action_items', [])),
+            # Narrative fields (from your working sample)
+            'full_summary': full_summary,
+            'key_takeaways': key_takeaways_str,
+            'topics_discussed': topics_json,
+            'key_action_items': action_items_json,
             'transcript': call_data.get('transcript', ''),
             
             # System metadata
