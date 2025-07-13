@@ -373,6 +373,203 @@ class ClariDataImporter:
         
         return self.import_call_data(call_ids)
 
+    def create_clari_calls_table(self):
+        """Create the clari_calls table with all available fields"""
+        try:
+            # Create comprehensive table for all Clari data
+            create_table_sql = """
+            CREATE TABLE IF NOT EXISTS clari_calls (
+                id SERIAL PRIMARY KEY,
+                call_id VARCHAR(255) UNIQUE NOT NULL,
+                source_id VARCHAR(255),
+                title TEXT,
+                status VARCHAR(100),
+                type VARCHAR(100),
+                disposition VARCHAR(100),
+                time TIMESTAMP,
+                last_modified_time TIMESTAMP,
+                icaluid VARCHAR(255),
+                calendar_id VARCHAR(255),
+                audio_url TEXT,
+                video_url TEXT,
+                call_review_page_url TEXT,
+                
+                -- Deal/CRM Information
+                deal_name TEXT,
+                deal_value DECIMAL(15,2),
+                deal_close_date DATE,
+                deal_stage_before_call VARCHAR(255),
+                deal_stage_live VARCHAR(255),
+                account_name TEXT,
+                contact_names JSONB,
+                
+                -- CRM Integration
+                crm_source VARCHAR(100),
+                deal_id VARCHAR(255),
+                account_id VARCHAR(255),
+                contact_ids JSONB,
+                
+                -- Participants
+                users JSONB,
+                external_participants JSONB,
+                joined_participants JSONB,
+                
+                -- Call Metrics
+                call_duration INTEGER,
+                total_speak_duration DECIMAL(10,2),
+                longest_monologue_duration DECIMAL(10,2),
+                longest_monologue_start_time DECIMAL(10,2),
+                talk_listen_ratio DECIMAL(5,4),
+                num_questions_asked INTEGER,
+                num_questions_asked_by_reps INTEGER,
+                engaging_questions INTEGER,
+                
+                -- AI Categories and Trackers
+                categories JSONB,
+                
+                -- Summary Data
+                full_summary TEXT,
+                key_takeaways TEXT,
+                topics_discussed JSONB,
+                key_action_items JSONB,
+                
+                -- Transcript
+                transcript JSONB,
+                
+                -- Raw Data
+                raw_data JSONB,
+                
+                -- Metadata
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            );
+            """
+            
+            self.supabase.table('clari_calls').execute(create_table_sql)
+            logger.info("clari_calls table created successfully")
+            
+        except Exception as e:
+            logger.error(f"Error creating clari_calls table: {e}")
+            raise
+
+    def transform_clari_data_comprehensive(self, call_id, call_data):
+        """Transform Clari data to comprehensive format for clari_calls table"""
+        try:
+            # Extract call metadata
+            call_info = call_data.get('call', {})
+            
+            # Basic call information
+            transformed_data = {
+                'call_id': call_id,
+                'source_id': call_info.get('source_id'),
+                'title': call_info.get('title'),
+                'status': call_info.get('status'),
+                'type': call_info.get('type'),
+                'disposition': call_info.get('disposition'),
+                'time': call_info.get('time'),
+                'last_modified_time': call_info.get('last_modified_time'),
+                'icaluid': call_info.get('icaluid'),
+                'calendar_id': call_info.get('calendar_id'),
+                'audio_url': call_info.get('audio_url'),
+                'video_url': call_info.get('video_url'),
+                'call_review_page_url': call_info.get('call_review_page_url'),
+                
+                # Deal/CRM Information
+                'deal_name': call_info.get('deal_name'),
+                'deal_value': call_info.get('deal_value'),
+                'deal_close_date': call_info.get('deal_close_date'),
+                'deal_stage_before_call': call_info.get('deal_stage_before_call'),
+                'deal_stage_live': call_info.get('deal_stage_live'),
+                'account_name': call_info.get('account_name'),
+                'contact_names': call_info.get('contact_names'),
+                
+                # CRM Integration
+                'crm_source': call_info.get('crm_info', {}).get('source_crm'),
+                'deal_id': call_info.get('crm_info', {}).get('deal_id'),
+                'account_id': call_info.get('crm_info', {}).get('account_id'),
+                'contact_ids': call_info.get('crm_info', {}).get('contact_ids'),
+                
+                # Participants
+                'users': call_info.get('users'),
+                'external_participants': call_info.get('externalParticipants'),
+                'joined_participants': call_info.get('joinedParticipants'),
+                
+                # Call Metrics
+                'call_duration': call_info.get('metrics', {}).get('call_duration'),
+                'total_speak_duration': call_info.get('metrics', {}).get('total_speak_duration'),
+                'longest_monologue_duration': call_info.get('metrics', {}).get('longest_monologue_duration'),
+                'longest_monologue_start_time': call_info.get('metrics', {}).get('longest_monologue_start_time'),
+                'talk_listen_ratio': call_info.get('metrics', {}).get('talk_listen_ratio'),
+                'num_questions_asked': call_info.get('metrics', {}).get('num_questions_asked'),
+                'num_questions_asked_by_reps': call_info.get('metrics', {}).get('num_questions_asked_by_reps'),
+                'engaging_questions': call_info.get('metrics', {}).get('engaging_questions'),
+                
+                # AI Categories and Trackers
+                'categories': call_info.get('metrics', {}).get('categories'),
+                
+                # Summary Data
+                'full_summary': call_info.get('summary', {}).get('full_summary'),
+                'key_takeaways': call_info.get('summary', {}).get('key_takeaways'),
+                'topics_discussed': call_info.get('summary', {}).get('topics_discussed'),
+                'key_action_items': call_info.get('summary', {}).get('key_action_items'),
+                
+                # Transcript
+                'transcript': call_info.get('transcript'),
+                
+                # Raw Data (for backup/debugging)
+                'raw_data': call_data
+            }
+            
+            return transformed_data
+            
+        except Exception as e:
+            logger.error(f"Error transforming comprehensive Clari data: {e}")
+            raise
+
+    def import_call_to_clari_calls(self, call_id):
+        """Import a single call to the clari_calls table"""
+        try:
+            # Fetch call details
+            call_data = self.fetch_call_details(call_id)
+            if not call_data:
+                logger.warning(f"No data returned for call {call_id}")
+                return False
+            
+            # Transform data
+            transformed_data = self.transform_clari_data_comprehensive(call_id, call_data)
+            
+            # Insert into clari_calls table
+            result = self.supabase.table('clari_calls').upsert(transformed_data).execute()
+            
+            logger.info(f"Successfully imported call {call_id} to clari_calls table")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error importing call {call_id} to clari_calls: {e}")
+            return False
+
+    def import_calls_to_clari_calls(self, call_ids):
+        """Import multiple calls to the clari_calls table"""
+        try:
+            # Ensure table exists
+            self.create_clari_calls_table()
+            
+            successful_imports = 0
+            failed_imports = 0
+            
+            for call_id in call_ids:
+                if self.import_call_to_clari_calls(call_id):
+                    successful_imports += 1
+                else:
+                    failed_imports += 1
+            
+            logger.info(f"Import complete: {successful_imports} successful, {failed_imports} failed")
+            return successful_imports, failed_imports
+            
+        except Exception as e:
+            logger.error(f"Error in bulk import to clari_calls: {e}")
+            raise
+
 def main():
     """Main function to run the importer"""
     importer = ClariDataImporter()

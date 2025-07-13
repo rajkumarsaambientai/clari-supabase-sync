@@ -328,6 +328,44 @@ def import_calls():
             "timestamp": datetime.now().isoformat()
         }), 500
 
+@app.route('/import-clari-calls', methods=['POST'])
+@limiter.limit("5 per hour")
+def import_clari_calls():
+    """Import calls to the comprehensive clari_calls table"""
+    try:
+        logger.info("Comprehensive clari_calls import triggered")
+        service = get_sync_service()
+        data = request.get_json()
+        call_ids = data.get('call_ids', [])
+        
+        if not call_ids or not isinstance(call_ids, list):
+            return jsonify({
+                "status": "error",
+                "message": "call_ids must be a non-empty list",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        logger.info(f"Importing {len(call_ids)} call IDs to clari_calls table")
+        
+        # Import to comprehensive table
+        successful, failed = service.importer.import_calls_to_clari_calls(call_ids)
+        
+        return jsonify({
+            "status": "success",
+            "imported": successful,
+            "failed": failed,
+            "total": len(call_ids),
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in comprehensive import: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
 @app.route('/status')
 def status():
     """Check service status"""
