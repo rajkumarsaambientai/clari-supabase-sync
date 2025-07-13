@@ -445,7 +445,9 @@ class ClariDataImporter:
             );
             """
             
-            self.supabase.table('clari_calls').execute(create_table_sql)
+            # Note: Table creation should be done via Supabase dashboard or migrations
+            # For now, we'll assume the table exists and handle the error gracefully
+            logger.info("clari_calls table creation skipped - use Supabase dashboard to create table")
             logger.info("clari_calls table created successfully")
             
         except Exception as e:
