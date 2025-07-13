@@ -236,6 +236,48 @@ def debug_api_call():
             "timestamp": datetime.now().isoformat()
         }), 500
 
+@app.route('/debug-specific-call')
+@limiter.limit("5 per hour")  # Rate limit specific call debug
+def debug_specific_call():
+    """Debug endpoint to test a specific call ID from the working sample"""
+    try:
+        logger.info("Specific call debug triggered")
+        service = get_sync_service()
+        
+        # Test with a call ID from the working sample
+        test_call_id = "9b0f3ee3-8b91-4ab6-8177-7f07af53ddbf"
+        
+        # Fetch raw call data
+        call_data = service.importer.fetch_call_details(test_call_id)
+        
+        if not call_data:
+            return jsonify({
+                "status": "error",
+                "message": f"No data returned for call {test_call_id}",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        # Transform the data to see what we're working with
+        transformed_data = service.importer.transform_clari_data(test_call_id, call_data)
+        
+        return jsonify({
+            "status": "success",
+            "call_id": test_call_id,
+            "raw_data_keys": list(call_data.keys()) if call_data else [],
+            "crm_info_keys": list(call_data.get('crm_info', {}).keys()) if call_data else [],
+            "summary_keys": list(call_data.get('summary', {}).keys()) if call_data else [],
+            "transformed_data": transformed_data,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Specific call debug failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
 @app.route('/status')
 def status():
     """Check service status"""
