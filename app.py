@@ -392,6 +392,46 @@ def health():
     """Health check endpoint"""
     return jsonify({"status": "healthy"})
 
+@app.route('/debug-comprehensive-transform')
+@limiter.limit("5 per hour")
+def debug_comprehensive_transform():
+    """Debug endpoint to test comprehensive transformation"""
+    try:
+        logger.info("Comprehensive transform debug triggered")
+        service = get_sync_service()
+        
+        # Test with one call ID
+        test_call_id = "542c15d1-2427-4017-ab72-5aa9d23617ce"
+        
+        # Fetch raw call data
+        call_data = service.importer.fetch_call_details(test_call_id)
+        
+        if not call_data:
+            return jsonify({
+                "status": "error",
+                "message": f"No data returned for call {test_call_id}",
+                "timestamp": datetime.now().isoformat()
+            }), 400
+        
+        # Transform data
+        transformed_data = service.importer.transform_clari_data_comprehensive(test_call_id, call_data)
+        
+        return jsonify({
+            "status": "success",
+            "call_id": test_call_id,
+            "transformed_data": transformed_data,
+            "raw_data_keys": list(call_data.keys()) if call_data else [],
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in comprehensive transform debug: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
 if __name__ == '__main__':
     # Run the app
     port = int(os.environ.get('PORT', 8080))
