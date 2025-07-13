@@ -540,8 +540,23 @@ class ClariDataImporter:
                 'raw_data': call_data
             }
             
-            # Remove None values to avoid issues with Supabase
-            transformed_data = {k: v for k, v in transformed_data.items() if v is not None}
+            # Remove None values and complex JSON fields to avoid issues with Supabase
+            # For now, let's focus on the basic fields first
+            basic_fields = {
+                'call_id', 'source_id', 'title', 'status', 'type', 'disposition',
+                'time', 'last_modified_time', 'icaluid', 'calendar_id', 'audio_url', 'video_url',
+                'call_review_page_url', 'deal_name', 'deal_value', 'deal_close_date',
+                'deal_stage_before_call', 'deal_stage_live', 'account_name',
+                'crm_source', 'deal_id', 'account_id',
+                'call_duration', 'total_speak_duration', 'longest_monologue_duration',
+                'longest_monologue_start_time', 'talk_listen_ratio', 'num_questions_asked',
+                'num_questions_asked_by_reps', 'engaging_questions',
+                'full_summary', 'key_takeaways'
+            }
+            
+            # Only include basic fields for now
+            transformed_data = {k: v for k, v in transformed_data.items() 
+                             if k in basic_fields and v is not None}
             
             return transformed_data
             
