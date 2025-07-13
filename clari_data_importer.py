@@ -460,6 +460,24 @@ class ClariDataImporter:
             # Extract call metadata
             call_info = call_data.get('call', {})
             
+            # Helper function to parse numeric values
+            def parse_numeric(value):
+                if value is None:
+                    return None
+                try:
+                    return float(value) if '.' in str(value) else int(value)
+                except:
+                    return None
+            
+            # Helper function to parse date
+            def parse_date(date_str):
+                if not date_str:
+                    return None
+                try:
+                    return date_str  # Keep as string for now, let Supabase handle conversion
+                except:
+                    return None
+            
             # Basic call information
             transformed_data = {
                 'call_id': call_id,
@@ -468,8 +486,8 @@ class ClariDataImporter:
                 'status': call_info.get('status'),
                 'type': call_info.get('type'),
                 'disposition': call_info.get('disposition'),
-                'time': call_info.get('time'),
-                'last_modified_time': call_info.get('last_modified_time'),
+                'time': parse_date(call_info.get('time')),
+                'last_modified_time': parse_date(call_info.get('last_modified_time')),
                 'icaluid': call_info.get('icaluid'),
                 'calendar_id': call_info.get('calendar_id'),
                 'audio_url': call_info.get('audio_url'),
@@ -478,8 +496,8 @@ class ClariDataImporter:
                 
                 # Deal/CRM Information
                 'deal_name': call_info.get('deal_name'),
-                'deal_value': call_info.get('deal_value'),
-                'deal_close_date': call_info.get('deal_close_date'),
+                'deal_value': parse_numeric(call_info.get('deal_value')),
+                'deal_close_date': parse_date(call_info.get('deal_close_date')),
                 'deal_stage_before_call': call_info.get('deal_stage_before_call'),
                 'deal_stage_live': call_info.get('deal_stage_live'),
                 'account_name': call_info.get('account_name'),
@@ -497,14 +515,14 @@ class ClariDataImporter:
                 'joined_participants': call_info.get('joinedParticipants'),
                 
                 # Call Metrics
-                'call_duration': call_info.get('metrics', {}).get('call_duration'),
-                'total_speak_duration': call_info.get('metrics', {}).get('total_speak_duration'),
-                'longest_monologue_duration': call_info.get('metrics', {}).get('longest_monologue_duration'),
-                'longest_monologue_start_time': call_info.get('metrics', {}).get('longest_monologue_start_time'),
-                'talk_listen_ratio': call_info.get('metrics', {}).get('talk_listen_ratio'),
-                'num_questions_asked': call_info.get('metrics', {}).get('num_questions_asked'),
-                'num_questions_asked_by_reps': call_info.get('metrics', {}).get('num_questions_asked_by_reps'),
-                'engaging_questions': call_info.get('metrics', {}).get('engaging_questions'),
+                'call_duration': parse_numeric(call_info.get('metrics', {}).get('call_duration')),
+                'total_speak_duration': parse_numeric(call_info.get('metrics', {}).get('total_speak_duration')),
+                'longest_monologue_duration': parse_numeric(call_info.get('metrics', {}).get('longest_monologue_duration')),
+                'longest_monologue_start_time': parse_numeric(call_info.get('metrics', {}).get('longest_monologue_start_time')),
+                'talk_listen_ratio': parse_numeric(call_info.get('metrics', {}).get('talk_listen_ratio')),
+                'num_questions_asked': parse_numeric(call_info.get('metrics', {}).get('num_questions_asked')),
+                'num_questions_asked_by_reps': parse_numeric(call_info.get('metrics', {}).get('num_questions_asked_by_reps')),
+                'engaging_questions': parse_numeric(call_info.get('metrics', {}).get('engaging_questions')),
                 
                 # AI Categories and Trackers
                 'categories': call_info.get('metrics', {}).get('categories'),
@@ -521,6 +539,9 @@ class ClariDataImporter:
                 # Raw Data (for backup/debugging)
                 'raw_data': call_data
             }
+            
+            # Remove None values to avoid issues with Supabase
+            transformed_data = {k: v for k, v in transformed_data.items() if v is not None}
             
             return transformed_data
             
