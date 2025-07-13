@@ -210,6 +210,32 @@ def debug_raw_data():
             "timestamp": datetime.now().isoformat()
         }), 500
 
+@app.route('/debug-api-call')
+@limiter.limit("5 per hour")  # Rate limit API call debug
+def debug_api_call():
+    """Debug endpoint to test the Clari API call directly"""
+    try:
+        logger.info("API call debug triggered")
+        service = get_sync_service()
+        
+        # Test the API call directly
+        recent_call_ids = service.fetch_recent_call_ids_from_clari(days_back=7)
+        
+        return jsonify({
+            "status": "success",
+            "call_ids_found": len(recent_call_ids),
+            "call_ids": recent_call_ids[:5],  # Show first 5
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"API call debug failed: {e}")
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }), 500
+
 @app.route('/status')
 def status():
     """Check service status"""
